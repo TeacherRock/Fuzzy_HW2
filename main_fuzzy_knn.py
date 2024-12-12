@@ -1,15 +1,32 @@
 import pandas as pd
 from itertools import combinations
-from fcmeans import FCM
 from sklearn.metrics import accuracy_score, adjusted_rand_score, normalized_mutual_info_score
+import numpy as np
 
-def fuzzy_c_means_clustering(X):
-    fcm = FCM(n_clusters=2, random_state=42)
-    fcm.fit(X.to_numpy())
-    return fcm.centers, fcm.u.argmax(axis=1) + 1
+def fuzzy_k_nearest_neighbor_clustering(X, y_true, k=2, m=2):
+    def calculate_membership_matrix(X, k, m):
+        n_samples = X.shape[0]
+        membership_matrix = np.zeros((n_samples, len(np.unique(y_true))))
+        
+        for i in range(n_samples):
+            distances = np.linalg.norm(X - X[i], axis=1)
+            distances[i] = np.inf
+            sorted_indices = np.argsort(distances)[:k]
+
+            for j in sorted_indices:
+                for label in np.unique(y_true):
+                    if y_true[j] == label:
+                        membership_matrix[i, label - 1] += 1 / (distances[j] ** (2 / (m - 1)))
+            
+            membership_matrix[i] /= membership_matrix[i].sum()
+        return membership_matrix
+
+    membership_matrix = calculate_membership_matrix(X.to_numpy(), k, m)
+    cluster_labels = membership_matrix.argmax(axis=1) + 1
+    return cluster_labels
 
 def evaluate_features(X, y_true):
-    centers, cluster_labels = fuzzy_c_means_clustering(X)
+    cluster_labels = fuzzy_k_nearest_neighbor_clustering(X, y_true)
     accuracy = accuracy_score(y_true, cluster_labels)
     ari = adjusted_rand_score(y_true, cluster_labels)
     nmi = normalized_mutual_info_score(y_true, cluster_labels)
@@ -26,7 +43,7 @@ def find_best_features(df, y_true, max_features=9):
         for subset in combinations(feature_names, k):
             X_subset = df[list(subset)]
             accuracy, ari, nmi, cluster_labels = evaluate_features(X_subset, y_true)
-            score = ari  # Choose ARI or NMI as the primary metric for selection
+            score = accuracy
 
             if score > best_score:
                 best_score = score
@@ -55,7 +72,7 @@ def main():
 
     # Find the best feature subset
     best_features, best_metrics, best_predictions = find_best_features(X, y_true)
-    save_results_to_txt(best_predictions, y_true, "./result/fuzzy_c_means_best_results.txt")
+    save_results_to_txt(best_predictions, y_true, "./result/fuzzy_knn_best_results.txt")
 
     print("\nBest Features:", best_features)
     print(f"Best Metrics: Accuracy={best_metrics[0]:.4f}, ARI={best_metrics[1]:.4f}, NMI={best_metrics[2]:.4f}")
