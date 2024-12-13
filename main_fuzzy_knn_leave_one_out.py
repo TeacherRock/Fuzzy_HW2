@@ -16,9 +16,10 @@ def fuzzy_k_nearest_neighbor_clustering(X_train, y_train, X_test, k=3, m=2):
             for j in sorted_indices:
                 for label in np.unique(y_train):
                     if y_train[j] == label:
-                        membership_matrix[i, label - 1] += 1 / (distances[j] ** (2 / (m - 1)))
-
-            membership_matrix[i] /= membership_matrix[i].sum()
+                        with np.errstate(divide='ignore', invalid='ignore'):
+                            membership_matrix[i, label - 1] += 1 / (distances[j] ** (2 / (m - 1)))
+            with np.errstate(divide='ignore', invalid='ignore'):
+                membership_matrix[i] /= membership_matrix[i].sum()
         return membership_matrix
 
     membership_matrix = calculate_membership_matrix(X_train, y_train, X_test, k, m)
@@ -42,7 +43,7 @@ def leave_one_out_evaluation(X, y_true, k=3, m=2):
     avg_accuracy = sum(accuracies) / len(accuracies)
     return avg_accuracy
 
-def find_best_features_leave_one_out(df, y_true, max_features=9, best_feature=[], m=2):
+def best_features_leave_one_out(df, y_true, max_features=9, best_feature=[], m=2):
     feature_names = best_feature
 
     X_subset = df[list(feature_names)]
@@ -50,17 +51,40 @@ def find_best_features_leave_one_out(df, y_true, max_features=9, best_feature=[]
 
     return avg_accuracy
 
-def main_wo_normalize(best_feature=[]):
+def find_best_features_leave_one_out(df, y_true, max_features=9, m=2):
+    feature_names = df.columns
+    best_score = 0
+    best_features = None
+    best_metrics = None
+    for k in range(1, max_features + 1):
+        for subset in combinations(feature_names, k):
+            X_subset = df[list(subset)]
+            accuracy = leave_one_out_evaluation(X_subset, y_true)
+            score = accuracy
+
+            if score > best_score:
+                best_score = score
+                best_features = subset
+                best_metrics = accuracy
+
+    return best_features, best_metrics
+
+def main_wo_normalize(best_feature=[], find_best_featrue=False):
     data_path = "./data/dataR2.csv"
     df = pd.read_csv(data_path)
 
     X = df.drop("Classification", axis=1)
     y_true = df["Classification"]
 
-    avg_accuracy = find_best_features_leave_one_out(X, y_true, best_feature=best_feature)
-    print(f"Best Average Accuracy (Leave-One-Out): {avg_accuracy:.4f}")
+    if find_best_featrue:
+        best_features, avg_accuracy = find_best_features_leave_one_out(X, y_true)
+        print("Best Features:", best_features)
+        print(f"Best Average Accuracy (Leave-One-Out): {avg_accuracy:.4f}")
+    else:
+        avg_accuracy = best_features_leave_one_out(X, y_true, best_feature=best_feature)
+        print(f"Best Average Accuracy (Leave-One-Out): {avg_accuracy:.4f}")
 
-def main_normalize(best_feature=[]):
+def main_normalize(best_feature=[], find_best_featrue=False):
     data_path = "./data/dataR2.csv"
     df = pd.read_csv(data_path)
 
@@ -69,8 +93,13 @@ def main_normalize(best_feature=[]):
     scaler = StandardScaler()  # You can use MinMaxScaler() for scaling between 0 and 1
     X_normalized = pd.DataFrame(scaler.fit_transform(X), columns=X.columns)
 
-    avg_accuracy = find_best_features_leave_one_out(X_normalized, y_true, best_feature=best_feature)
-    print(f"Best Average Accuracy (Leave-One-Out): {avg_accuracy:.4f}")
+    if find_best_featrue:
+        best_features, avg_accuracy = find_best_features_leave_one_out(X_normalized, y_true)
+        print("Best Features:", best_features)
+        print(f"Best Average Accuracy (Leave-One-Out): {avg_accuracy:.4f}")
+    else:
+        avg_accuracy = best_features_leave_one_out(X_normalized, y_true, best_feature=best_feature)
+        print(f"Best Average Accuracy (Leave-One-Out): {avg_accuracy:.4f}")
 
 if __name__ == "__main__":
     
@@ -79,15 +108,24 @@ if __name__ == "__main__":
     best_feature = ['Age', 'Glucose', 'Resistin']
     ## Normalize ##
     print("=============== Normalize, Use best featrue =================")
+    print("Best Features:", best_feature)
     main_normalize(best_feature=best_feature) ## Best featrue
 
     print("=============== Normalize, Use all featrue ==================")
     main_normalize(best_feature=all_feature) ## Best featrue
     
     best_feature = ['Age', 'Glucose', 'Resistin']
-    ## not Normalize ##
     print("=============== not Normalize, Use best featrue =============")
+    print("Best Features:", best_feature)
     main_wo_normalize(best_feature=best_feature) ## Best featrue
 
     print("=============== Normalize, Use all featrue ==================")
-    main_normalize(best_feature=all_feature) ## Best featrue
+    main_wo_normalize(best_feature=all_feature) ## Best featrue
+
+
+    print("\n================= Find new best feature =====================")
+    print("=============== not Normalize=============")
+    main_wo_normalize(find_best_featrue=True)
+
+    print("=============== Normalize==================")
+    main_normalize(find_best_featrue=True)

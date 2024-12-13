@@ -5,7 +5,7 @@ from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import StandardScaler
 
 def nearest_neighbor_clustering(X, y_true):
-    knn = KNeighborsClassifier(n_neighbors=2)
+    knn = KNeighborsClassifier(n_neighbors=1)
     knn.fit(X, y_true)
     cluster_labels = knn.predict(X)
     return cluster_labels
