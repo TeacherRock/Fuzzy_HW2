@@ -118,8 +118,8 @@ if __name__ == "__main__":
     main_wo_normalize(best_feature=best_feature, m=m) ## Best featrue
 
     m = 2
-    print("=============== Normalize, Use all featrue ==================")
-    main_normalize(best_feature=all_feature, m=m) ## Best featrue
+    print("=============== not Normalize, Use all featrue ==============")
+    main_wo_normalize(best_feature=all_feature, m=m) ## Best featrue
 
     print("\n================= Find new best feature =====================")
     print("=============== not Normalize=============")

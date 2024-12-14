@@ -16,4 +16,4 @@
     refer : main_knn_leave_one_out.py
 
 Each python file perform the method with/without feature normalization
-Leave-one-out versions use the best combination of features from the orginal version
+Leave-one-out versions use the best combination of features from the orginal version, and also find the new ocmbination of features for comparision.
